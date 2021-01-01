@@ -1,0 +1,15 @@
+@()
+
+<!doctype html>
+<html>
+	<head></head>
+	<body>
+		@{//TODO add fingerprinting, might already work in production mode
+			scalajs.html.scripts(
+				"client",
+				controllers.routes.Assets.versioned(_).toString,
+				name => getClass.getResource(s"/public/$name") != null
+			)
+		}
+	</body>
+</html>

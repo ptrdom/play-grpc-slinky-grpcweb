@@ -1,0 +1,26 @@
+@import play.twirl.api.TwirlFeatureImports._
+@import scalajs.html.jsScript
+
+@(
+	projectName: String,
+	assets: String => String,
+	resourceExists: String => Boolean,
+	htmlAttributes: Html = Html("")
+)
+
+<!doctype html>
+<html>
+	<head></head>
+	<body>
+		@defining(s"${projectName.toLowerCase}") { name =>
+			@Seq(s"$name-opt-library.js", s"$name-fastopt-library.js").find(resourceExists).map(name => jsScript(assets(name), htmlAttributes))
+		}
+		<script language="JavaScript">
+			var exports = window;
+			exports.require = window["ScalaJSBundlerLibrary"].require;
+		</script>
+		@defining(s"${projectName.toLowerCase}") { name =>
+			@Seq(s"$name-opt.js", s"$name-fastopt.js").find(resourceExists).map(name => jsScript(assets(name), htmlAttributes))
+		}
+	</body>
+</html>
