@@ -15,6 +15,8 @@ lazy val playGrpcVersion          = BuildInfo.playGrpcVersion
 lazy val scalaTestPlusPlayVersion = "5.0.0"
 lazy val scalaJsDomVersion        = "1.1.0"
 lazy val scalaJsScriptsVersion    = "1.1.4"
+lazy val slinkyVersion            = "0.6.6"
+lazy val reactVersion             = "16.12.0"
 
 lazy val `play-grpc-scala-js-grpcweb` = (project in file("."))
   .aggregate(
@@ -56,6 +58,11 @@ lazy val client =
     .settings(
       scalaJSUseMainModuleInitializer := true,
       libraryDependencies += "org.scala-js" %%% "scalajs-dom" % scalaJsDomVersion,
+      libraryDependencies += "me.shadaj"    %%% "slinky-core" % slinkyVersion,
+      libraryDependencies += "me.shadaj"    %%% "slinky-web"  % slinkyVersion,
+      scalacOptions += "-Ymacro-annotations",
+      npmDependencies in Compile += "react"     -> reactVersion,
+      npmDependencies in Compile += "react-dom" -> reactVersion,
       webpackBundlingMode in fastOptJS := BundlingMode.LibraryOnly(),
       webpackEmitSourceMaps in fastOptJS := false
     )

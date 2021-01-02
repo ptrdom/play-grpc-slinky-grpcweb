@@ -4,11 +4,18 @@ import com.example.service.Request
 import com.example.service.Response
 import com.example.service.ServiceGrpcWeb
 import io.grpc.stub.StreamObserver
+import org.scalajs.dom
 import org.scalajs.dom.document
 import scalapb.grpc.Channels
 import scalapb.grpcweb.Metadata
+import slinky.core._
+import slinky.core.annotations.react
+import slinky.core.facade.Hooks._
+import slinky.web.ReactDOM
+import slinky.web.html._
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.scalajs.js.timers.clearTimeout
 import scala.scalajs.js.timers.setTimeout
 import scala.util.Failure
 import scala.util.Success
@@ -18,77 +25,102 @@ object Client {
   val stub = ServiceGrpcWeb.stub(Channels.grpcwebChannel("http://localhost:9000"))
 
   def main(args: Array[String]): Unit = {
-    val helloWorldContainer = document.createElement("p")
-    helloWorldContainer.textContent = "Hello world!"
-    document.body.appendChild(helloWorldContainer)
-
-    unary()
-    stream(cancel = true)
-    stream(cancel = false)
+    val container = Option(dom.document.getElementById("root")).getOrElse {
+      val elem = dom.document.createElement("div")
+      elem.id = "root"
+      dom.document.body.appendChild(elem)
+      elem
+    }
+    ReactDOM.render(
+      span(
+        Unary(),
+        Stream(false),
+        Stream(true)
+      ),
+      container
+    )
   }
 
-  def unary() = {
-    val container = document.createElement("div")
-    container.textContent = "Unary request:"
-    document.body.appendChild(container)
+  @react object Unary {
+    type Props = Unit
+    val component: FunctionalComponent[Props] = FunctionalComponent { _ =>
+      val (status, setStatus) = useState("Request pending")
 
-    val progress = document.createElement("p")
-    progress.textContent = "Request pending"
-    container.appendChild(progress)
+      useEffect(
+        () => {
+          val req                = Request(payload = "Hello!")
+          val metadata: Metadata = Metadata("custom-header-1" -> "unary-value")
 
-    val req                = Request(payload = "Hello!")
-    val metadata: Metadata = Metadata("custom-header-1" -> "unary-value")
-    progress.textContent = "Request sent"
+          stub.unary(req, metadata).onComplete {
+            case Success(value) =>
+              setStatus(s"Request success: ${value.payload}")
+            case Failure(ex) =>
+              setStatus(s"Request failure: $ex")
+          }
+          setStatus("Request sent")
+        },
+        Seq.empty
+      )
 
-    stub.unary(req, metadata).onComplete {
-      case Success(value) =>
-        println("Success")
-        progress.textContent = s"Request success: ${value.payload}"
-      case Failure(ex) =>
-        println("Failure")
-        progress.textContent = s"Request failure: $ex"
+      div(
+        h2("Unary request:"),
+        p(status)
+      )
     }
   }
 
-  def stream(cancel: Boolean) = {
-    val container = document.createElement("div")
-    container.textContent = "Stream request:"
-    document.body.appendChild(container)
+  @react object Stream {
+    case class Props(cancel: Boolean)
+    val component: FunctionalComponent[Props] = FunctionalComponent { props =>
+      val (status, setStatus) = useState("Request pending")
 
-    val progress = document.createElement("p")
-    progress.textContent = "Request pending"
-    container.appendChild(progress)
+      useEffect(
+        () => {
+          val req                = Request(payload = "Hello!")
+          val metadata: Metadata = Metadata("custom-header-2" -> "streaming-value")
 
-    val req                = Request(payload = "Hello!")
-    val metadata: Metadata = Metadata("custom-header-2" -> "streaming-value")
-    progress.textContent = "Request sent"
+          var resCount = 0
 
-    var resCount = 0
+          val stream = stub.serverStreaming(
+            req,
+            metadata,
+            new StreamObserver[Response] {
+              override def onNext(value: Response): Unit = {
+                resCount += 1
+                setStatus(s"Received success [$resCount]")
+              }
 
-    val stream = stub.serverStreaming(
-      req,
-      metadata,
-      new StreamObserver[Response] {
-        override def onNext(value: Response): Unit = {
-          resCount += 1
-          progress.textContent = s"Received success [$resCount]"
-        }
+              override def onError(ex: Throwable): Unit = {
+                setStatus(s"Received failure: $ex")
+              }
 
-        override def onError(ex: Throwable): Unit = {
-          progress.textContent = s"Received failure: $ex"
-        }
+              override def onCompleted(): Unit = {
+                setStatus(s"Received completed")
+              }
+            }
+          )
+          setStatus("Request sent")
 
-        override def onCompleted(): Unit = {
-          progress.textContent = s"Received completed"
-        }
-      }
-    )
+          val maybeTimer = if (props.cancel) {
+            Some(
+              setTimeout(5000) {
+                setStatus(s"Stream stopped by client")
+                stream.cancel()
+              }
+            )
+          } else None
+          () => {
+            stream.cancel()
+            maybeTimer.foreach(clearTimeout)
+          }
+        },
+        Seq.empty
+      )
 
-    if (cancel) {
-      setTimeout(5000) {
-        progress.textContent = s"Stream stopped by client"
-        stream.cancel()
-      }
+      div(
+        h2("Stream request:"),
+        p(status)
+      )
     }
   }
 }
