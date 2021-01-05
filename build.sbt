@@ -1,3 +1,5 @@
+import BuildEnvPlugin.autoImport
+import BuildEnvPlugin.autoImport.BuildEnv
 import com.example.BuildInfo
 
 scalaVersion in ThisBuild := "2.13.2"
@@ -17,6 +19,7 @@ lazy val scalaJsDomVersion        = "1.1.0"
 lazy val scalaJsScriptsVersion    = "1.1.4"
 lazy val slinkyVersion            = "0.6.6"
 lazy val reactVersion             = "16.12.0"
+lazy val reactProxyVersion        = "1.1.8"
 
 lazy val `play-grpc-scala-js-grpcweb` = (project in file("."))
   .aggregate(
@@ -56,15 +59,33 @@ lazy val client =
     .in(file("client"))
     .enablePlugins(ScalaJSBundlerPlugin)
     .settings(
-      scalaJSUseMainModuleInitializer := true,
-      libraryDependencies += "org.scala-js" %%% "scalajs-dom" % scalaJsDomVersion,
-      libraryDependencies += "me.shadaj"    %%% "slinky-core" % slinkyVersion,
-      libraryDependencies += "me.shadaj"    %%% "slinky-web"  % slinkyVersion,
+      libraryDependencies += "me.shadaj" %%% "slinky-web" % slinkyVersion,
+      libraryDependencies += "me.shadaj" %%% "slinky-hot" % slinkyVersion,
       scalacOptions += "-Ymacro-annotations",
-      npmDependencies in Compile += "react"     -> reactVersion,
-      npmDependencies in Compile += "react-dom" -> reactVersion,
+      npmDependencies in Compile += "react"                  -> reactVersion,
+      npmDependencies in Compile += "react-dom"              -> reactVersion,
+      npmDependencies in Compile += "react-proxy"            -> reactProxyVersion,
+      npmDevDependencies in Compile += "file-loader"         -> "6.0.0",
+      npmDevDependencies in Compile += "style-loader"        -> "1.2.1",
+      npmDevDependencies in Compile += "css-loader"          -> "3.5.3",
+      npmDevDependencies in Compile += "html-webpack-plugin" -> "4.3.0",
+      npmDevDependencies in Compile += "copy-webpack-plugin" -> "5.1.1",
+      npmDevDependencies in Compile += "webpack-merge"       -> "4.2.2",
+      scalaJSStage := {
+        autoImport.buildEnv.value match {
+          case BuildEnv.Production =>
+            FullOptStage
+          case _ =>
+            FastOptStage
+        }
+      },
+      //FIXME bug when placing webpack configs in client subdirectory
+      webpackResources := baseDirectory.value / "webpack" * "*",
+      webpackConfigFile in fastOptJS := Some(baseDirectory.value / "webpack" / "webpack-fastopt.config.js"),
+      webpackConfigFile in Test := Some(baseDirectory.value / "webpack" / "webpack-core.config.js"),
+      webpackDevServerExtraArgs in fastOptJS := Seq("--inline", "--hot"),
       webpackBundlingMode in fastOptJS := BundlingMode.LibraryOnly(),
-      webpackEmitSourceMaps in fastOptJS := false
+      requireJsDomEnv in Test := true
     )
     .dependsOn(protoJs)
 
@@ -72,8 +93,22 @@ lazy val server = project
   .enablePlugins(PlayScala, AkkaGrpcPlugin, PlayAkkaHttp2Support, WebScalaJSBundlerPlugin)
   .in(file("server"))
   .settings(
-    scalaJSProjects := Seq(client),
-    pipelineStages in Assets := Seq(scalaJSPipeline),
+    scalaJSProjects := {
+      autoImport.buildEnv.value match {
+        case BuildEnv.Production =>
+          Seq(client)
+        case _ =>
+          Seq.empty
+      }
+    },
+    pipelineStages in Assets := {
+      autoImport.buildEnv.value match {
+        case BuildEnv.Production =>
+          Seq(scalaJSPipeline)
+        case _ =>
+          Seq.empty
+      }
+    },
     pipelineStages := Seq(digest, gzip),
     libraryDependencies ++= Seq(
       guice,
@@ -86,3 +121,6 @@ lazy val server = project
     )
   )
   .dependsOn(protoJVM)
+
+addCommandAlias("clientDev", ";project client;fastOptJS::startWebpackDevServer;~fastOptJS")
+addCommandAlias("serverDev", ";project server;~run")

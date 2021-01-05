@@ -15,13 +15,7 @@ class WebServiceController @Inject() (
     if (environment.mode == Mode.Prod) {
       Ok(views.html.com.example.server.indexFullOptJs())
     } else {
-      Ok(
-        views.html.com.example.server.indexFastOptJs(
-          "client",
-          controllers.routes.Assets.versioned(_).toString,
-          name => getClass.getResource(s"/public/$name") != null
-        )
-      )
+      Ok(views.html.com.example.server.indexFastOptJs())
     }
   }
 }
