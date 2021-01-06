@@ -1,8 +1,13 @@
 import BuildEnvPlugin.autoImport
 import BuildEnvPlugin.autoImport.BuildEnv
 import com.example.BuildInfo
+import com.typesafe.sbt.packager.docker.Cmd
+import com.typesafe.sbt.packager.docker.CmdLike
+import com.typesafe.sbt.packager.docker.DockerAlias
+import com.typesafe.sbt.packager.docker.DockerChmodType
+import com.typesafe.sbt.packager.docker.ExecCmd
 
-scalaVersion in ThisBuild := "2.13.2"
+scalaVersion in ThisBuild := "2.13.4"
 
 resolvers in ThisBuild ++= Seq(
   Resolver.sonatypeRepo("snapshots"),
@@ -79,9 +84,9 @@ lazy val client =
             FastOptStage
         }
       },
-      //FIXME bug when placing webpack configs in client subdirectory
       webpackResources := baseDirectory.value / "webpack" * "*",
       webpackConfigFile in fastOptJS := Some(baseDirectory.value / "webpack" / "webpack-fastopt.config.js"),
+      webpackConfigFile in fullOptJS := Some(baseDirectory.value / "webpack" / "webpack-opt.config.js"),
       webpackConfigFile in Test := Some(baseDirectory.value / "webpack" / "webpack-core.config.js"),
       webpackDevServerExtraArgs in fastOptJS := Seq("--inline", "--hot"),
       webpackBundlingMode in fastOptJS := BundlingMode.LibraryOnly(),
@@ -120,7 +125,15 @@ lazy val server = project
       "org.scalatestplus.play" %% "scalatestplus-play"   % scalaTestPlusPlayVersion % Test
     )
   )
+  .settings(
+    dockerBaseImage := "adoptopenjdk/openjdk8",
+    dockerExposedPorts ++= Seq(9000),
+    dockerEntrypoint := Seq(
+      "/opt/docker/bin/server",
+      "-Dconfig.resource=docker-application.conf"
+    )
+  )
   .dependsOn(protoJVM)
 
-addCommandAlias("clientDev", ";project client;fastOptJS::startWebpackDevServer;~fastOptJS")
-addCommandAlias("serverDev", ";project server;~run")
+addCommandAlias("clientDev", "client/fastOptJS::startWebpackDevServer;~client/fastOptJS")
+addCommandAlias("serverDev", "~server/run")

@@ -11,9 +11,6 @@ module.exports = merge(core, {
   mode: "production",
   devtool: "source-map",
   entry: entries,
-  output: {
-    path: path.resolve(__dirname, "../../../../build")
-  },
   plugins: [
     new webpack.DefinePlugin({
       'process.env': {

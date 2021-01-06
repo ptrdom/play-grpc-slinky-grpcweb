@@ -7,8 +7,8 @@
 		@{
 			scalajs.html.scripts(
 				"client",
-				controllers.routes.Assets.versioned(_).toString,
-				name => getClass.getResource(s"/public/$name") != null
+				asset => controllers.routes.Assets.versioned(s"dist/$asset").toString,
+				name => getClass.getResource(s"/public/dist/$name") != null
 			)
 		}
 	</body>
