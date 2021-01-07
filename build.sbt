@@ -126,7 +126,14 @@ lazy val server = project
     )
   )
   .settings(
-    dockerBaseImage := "adoptopenjdk/openjdk8",
+    dockerAliases in Docker += DockerAlias(None, None, "play-grpc-slinky-grpcweb", None),
+    packageName in Docker := "play-grpc-slinky-grpcweb",
+    dockerBaseImage := "openjdk:8-alpine",
+    dockerCommands := {
+      val (stage0, stage1)           = dockerCommands.value.splitAt(8)
+      val (stage1part1, stage1part2) = stage1.splitAt(3)
+      stage0 ++ stage1part1 ++ Seq(ExecCmd("RUN", "apk", "add", "--no-cache", "bash")) ++ stage1part2
+    },
     dockerExposedPorts ++= Seq(9000),
     dockerEntrypoint := Seq(
       "/opt/docker/bin/server",
