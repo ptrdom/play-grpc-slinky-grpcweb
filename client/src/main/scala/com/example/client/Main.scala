@@ -9,8 +9,6 @@ import scala.scalajs.js.annotation.JSExportTopLevel
 
 object Main {
 
-  //FIXME throws java.lang.ClassCastException: undefined is not an instance of Ljava.lang.String;
-  //TODO copy Slinky production loader
   @JSExportTopLevel("main")
   def main(): Unit = {
     if (LinkingInfo.developmentMode) {
