@@ -26,7 +26,7 @@ lazy val slinkyVersion            = "0.6.6"
 lazy val reactVersion             = "16.12.0"
 lazy val reactProxyVersion        = "1.1.8"
 
-lazy val `play-grpc-scala-js-grpcweb` = (project in file("."))
+lazy val `play-grpc-slinky-grpcweb` = (project in file("."))
   .aggregate(
     client,
     server

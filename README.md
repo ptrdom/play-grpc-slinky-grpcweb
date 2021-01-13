@@ -1,6 +1,6 @@
 # Play gRPC Slinky gRPC-web
 
-This template project was the result of investigation into full-sack `Scala` web development experience with following requirements:
+This template project was the result of investigation into full-stack `Scala` web development experience with following requirements:
 
 - Compile time type safety
 - Streaming API
